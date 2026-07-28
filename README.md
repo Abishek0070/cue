@@ -45,18 +45,13 @@ There are two ways to install cue. **If you're not a developer, use Option A.**
 
 ### Option A — Download the app (easiest)
 
-1. Go to the [**Releases**](../../releases) page and download **`cue-mac.zip`**.
+1. Go to the [**Releases**](../../releases) page and download the **`cue-…-arm64-mac.zip`** file.
 2. Double-click the zip to unzip it. You'll get **`cue.app`**.
 3. Drag **`cue.app`** into your **Applications** folder.
-4. **First open (important):** because cue is a free app without a paid Apple certificate, macOS will refuse to open it normally the first time. Do this once:
-   - **Right-click** `cue.app` → **Open** → click **Open** in the dialog.
-   - If macOS instead says **"cue is damaged and can't be opened,"** open the **Terminal** app and paste this line, then press Return:
-     ```bash
-     xattr -cr /Applications/cue.app
-     ```
-     Then double-click cue.app again. (This just tells macOS "yes, I trust this app I downloaded." It's safe.)
+4. Double-click it. That's it — no warnings, no Terminal. ✅
 
-After that, cue opens normally forever.
+cue is signed with an Apple Developer ID and notarized by Apple, so it opens
+on the first double-click like any other app.
 
 ### Option B — Run from source (developers)
 
@@ -162,8 +157,11 @@ Check Settings shows a transcription-capable key (OpenAI with Whisper, or Gemini
 **cue shows up in my Zoom share.**
 Set Zoom's **Screen capture mode** to *"Advanced capture with window filtering"* (see Step 3). And remember: on macOS 15.4+ this can still fail — it's best-effort.
 
-**"cue is damaged and can't be opened."**
-Run `xattr -cr /Applications/cue.app` in Terminal once (see Install → Option A).
+**"cue is damaged" / "unidentified developer."**
+You're on a build from before cue was notarized (anything released prior to
+2026-07-28). Download the current release and it will open normally — don't
+run `xattr` on it, since that strips the very signature that makes the new
+build trustworthy.
 
 ---
 
