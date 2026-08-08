@@ -35,15 +35,45 @@
 
         <div id="composer">
           <div id="input-area">
-            <div id="placeholder">Ask about your screen or conversation, or <span class="keycap">⌘</span><span class="keycap">⏎</span> for Assist</div>
+            <div id="placeholder">Ask about your screen or conversation, or <span class="keycap" id="key-mod"></span><span class="keycap">⏎</span> for Assist</div>
             <textarea id="input" rows="1" spellcheck="false"></textarea>
           </div>
           <div id="composer-bottom">
             <button id="smart-toggle" class="smart-pill"><span class="ic"></span><span>Smart</span></button>
+            <button id="history-btn" class="history-btn" title="Meeting history"></button>
             <button id="more-btn" class="more-btn" title="Settings"></button>
             <div class="spacer"></div>
             <button id="send-btn" title="Send"></button>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Meeting history -->
+  <div id="history-scrim" class="hidden">
+    <div id="history" class="glass">
+      <div class="s-head">
+        <div class="s-title">Meeting history</div>
+        <button id="h-close" class="s-close">Done</button>
+      </div>
+      <div class="h-search-row">
+        <input id="h-search" type="text" placeholder="Search meetings…" />
+      </div>
+      <div id="h-list" class="h-list"></div>
+      <div id="h-detail" class="h-detail hidden">
+        <div class="h-detail-title" id="h-title"></div>
+        <div class="h-detail-sub" id="h-sub"></div>
+        <div class="h-detail-sec" id="h-summary"></div>
+        <div class="h-detail-sec" id="h-keypoints"></div>
+        <div class="h-detail-sec" id="h-decisions"></div>
+        <div class="h-detail-sec" id="h-actions"></div>
+        <div class="h-detail-sec" id="h-followup"></div>
+        <div class="h-detail-sec" id="h-transcript"></div>
+        <div class="h-notes-actions">
+          <button id="h-notes" class="s-ctx-btn">Generate notes</button>
+          <button id="h-copy" class="s-ctx-btn">Copy notes</button>
+          <button id="h-delete" class="s-ctx-btn s-ctx-btn--clear">Delete this meeting</button>
         </div>
       </div>
     </div>
@@ -57,21 +87,24 @@
         <button id="s-close" class="s-close">Done</button>
       </div>
       <div class="s-body">
-        <label class="s-label">Provider</label>
-        <div class="s-seg" id="provider-seg">
-          <button data-provider="openai">OpenAI</button>
-          <button data-provider="anthropic">Anthropic</button>
-          <button data-provider="gemini">Gemini</button>
+        <label class="s-label">OpenCode Zen API key <span class="s-hint">cue uses free Zen models — ranked fallback chain auto-picks (get a key at opencode.ai/zen)</span></label>
+        <div class="s-field"><span>Key</span><input id="key-zen" type="password" placeholder="sk-... (free at opencode.ai/zen)" autocomplete="off" /></div>
+
+        <label class="s-label">Background context <span class="s-hint">injected into Assist, Ask &amp; Say prompts</span></label>
+        <textarea id="s-context" class="s-context" placeholder="Paste your project info, resume, or any reference material here…&#10;&#10;e.g. I built a React dashboard for FanDuel that handles 10k req/s and won an internal innovation award."></textarea>
+        <div class="s-ctx-actions">
+          <input type="file" id="s-ctx-file" accept=".md,.txt" hidden />
+          <button id="s-ctx-import" class="s-ctx-btn">Import from file…</button>
+          <button id="s-ctx-clear" class="s-ctx-btn s-ctx-btn--clear">Clear</button>
         </div>
 
-        <label class="s-label">API keys <span class="s-hint">stored locally in cue-data.json</span></label>
-        <div class="s-field"><span>OpenAI</span><input id="key-openai" type="password" placeholder="sk-..." autocomplete="off" /></div>
-        <div class="s-field"><span>Anthropic</span><input id="key-anthropic" type="password" placeholder="sk-ant-..." autocomplete="off" /></div>
-        <div class="s-field"><span>Gemini</span><input id="key-gemini" type="password" placeholder="AIza..." autocomplete="off" /></div>
-
-        <label class="s-label">Models <span class="s-hint">fast = Smart off · smart = Smart on</span></label>
-        <div class="s-field"><span>Fast</span><input id="model-fast" type="text" autocomplete="off" /></div>
-        <div class="s-field"><span>Smart</span><input id="model-smart" type="text" autocomplete="off" /></div>
+        <label class="s-label">Keyboard shortcuts <span class="s-hint">changes apply immediately</span></label>
+        <div class="s-shortcuts">
+          <div class="s-field"><span>Assist</span><input id="sc-assist" type="text" placeholder="CommandOrControl+Return" /></div>
+          <div class="s-field"><span>Code</span><input id="sc-leetcode" type="text" placeholder="CommandOrControl+H" /></div>
+          <div class="s-field"><span>Listen</span><input id="sc-listening" type="text" placeholder="CommandOrControl+Shift+L" /></div>
+          <div class="s-field"><span>Pass-thru</span><input id="sc-passthrough" type="text" placeholder="CommandOrControl+Shift+I" /></div>
+        </div>
 
         <div class="s-status" id="s-status"></div>
       </div>

@@ -6,14 +6,13 @@ const { app } = require('electron');
 const FILE = path.join(app.getPath('userData'), 'cue-data.json');
 
 const DEFAULTS = {
-  provider: 'openai',
+  provider: 'gemini',
   smart: false,
-  apiKeys: { openai: '', anthropic: '', gemini: '', deepgram: '' },
-  models: {
-    openai: { fast: 'gpt-4o-mini', smart: 'gpt-4o' },
-    anthropic: { fast: 'claude-3-5-haiku-latest', smart: 'claude-3-5-sonnet-latest' },
-    gemini: { fast: 'gemini-1.5-flash', smart: 'gemini-1.5-pro' }
-  }
+  context: '',
+  shortcutOverrides: {},
+  windowState: null, // { x, y, width, height }
+  apiKeys: { openai: '', anthropic: '', gemini: '', deepgram: '', openrouter: '', zen: '' },
+  models: {}
 };
 
 let data = null;
@@ -34,6 +33,12 @@ function load() {
   if (data) return data;
   try { data = deepMerge(DEFAULTS, JSON.parse(fs.readFileSync(FILE, 'utf8'))); }
   catch { data = deepMerge(DEFAULTS, {}); }
+  // legacy migration: an existing OpenRouter key becomes the Zen key
+  if (data.apiKeys) {
+    if ((data.apiKeys.zen || '').trim() === '' && (data.apiKeys.openrouter || '').trim() !== '') {
+      data.apiKeys.zen = data.apiKeys.openrouter;
+    }
+  }
   return data;
 }
 function save() { try { fs.writeFileSync(FILE, JSON.stringify(data, null, 2)); } catch (e) { /* ignore */ } }

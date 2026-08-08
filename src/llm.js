@@ -1,5 +1,5 @@
-// LLM factory — OpenAI / Anthropic / Gemini behind one streaming interface.
-// stream({ system, turns:[{role,text}], imageDataUrl, maxTokens, onToken }) -> Promise<fullText>
+// LLM factory — tries a ranked chain of free models until one works.
+// stream({ system, turns, imageDataUrl, maxTokens, onToken, onModel }) -> Promise<fullText>
 
 function stripDataUrl(dataUrl) {
   const m = /^data:(.+?);base64,(.*)$/s.exec(dataUrl || '');
@@ -52,6 +52,30 @@ async function streamAnthropic({ apiKey, model, system, turns, imageDataUrl, max
   return full;
 }
 
+async function streamZenOpenAI({ apiKey, model, system, turns, imageDataUrl, maxTokens, onToken }) {
+  const OpenAI = require('openai');
+  const client = new OpenAI({ apiKey, baseURL: 'https://opencode.ai/zen/v1', defaultHeaders: { 'HTTP-Referer': 'https://github.com/cue-app', 'X-Title': 'cue' } });
+  const messages = [{ role: 'system', content: system }];
+  turns.forEach((t, i) => {
+    const last = i === turns.length - 1;
+    if (last && imageDataUrl && t.role === 'user') {
+      messages.push({ role: 'user', content: [
+        { type: 'text', text: t.text },
+        { type: 'image_url', image_url: { url: imageDataUrl } }
+      ] });
+    } else {
+      messages.push({ role: t.role, content: t.text });
+    }
+  });
+  const stream = await client.chat.completions.create({ model, messages, stream: true, max_tokens: maxTokens });
+  let full = '';
+  for await (const part of stream) {
+    const d = part.choices && part.choices[0] && part.choices[0].delta && part.choices[0].delta.content;
+    if (d) { full += d; onToken(d); }
+  }
+  return full;
+}
+
 async function streamGemini({ apiKey, model, system, turns, imageDataUrl, maxTokens, onToken }) {
   const { GoogleGenAI } = require('@google/genai');
   const ai = new GoogleGenAI({ apiKey });
@@ -75,23 +99,42 @@ async function streamGemini({ apiKey, model, system, turns, imageDataUrl, maxTok
   return full;
 }
 
+// OpenCode Zen free-tier models ranked best → reliable fallback (verified Aug 2026
+// from https://opencode.ai/docs/zen). All use the OpenAI-compatible
+// https://opencode.ai/zen/v1/chat/completions endpoint. Vision-capable first so
+// screenshot features fall back to text-only models instead of failing hard.
+const FALLBACK_CHAIN = [
+  { provider: 'zen', model: 'mimo-v2.5-free' },        // Moonshot M2.5 — free multimodal, 1M ctx
+  { provider: 'zen', model: 'north-mini-code-free' },  // Cohere North Mini Code — free, fast coding
+  { provider: 'zen', model: 'deepseek-v4-flash-free' },// DeepSeek V4 Flash — free, strong coding+reasoning
+  { provider: 'zen', model: 'nemotron-3-ultra-free' }, // NVIDIA Nemotron 3 Ultra — free, fast
+  { provider: 'zen', model: 'laguna-s-2.1-free' },     // free general-purpose
+  { provider: 'zen', model: 'longcat-2.0-free' }       // free long-context fallback
+];
+
 function createLLM(settings) {
-  const provider = settings.provider;
-  const keys = settings.apiKeys || {};
-  const apiKey = keys[provider];
-  const tier = settings.smart ? 'smart' : 'fast';
-  const model = (settings.models[provider] || {})[tier];
+  const apiKey = (settings.apiKeys || {}).zen;
+  const chain = apiKey && apiKey.trim() ? FALLBACK_CHAIN : [];
   const maxTokens = settings.smart ? 1400 : 700;
 
   return {
-    provider, model, apiKey,
-    ready: !!apiKey && !!model,
-    async stream(params) {
-      const args = { apiKey, model, maxTokens, ...params };
-      if (provider === 'openai') return streamOpenAI(args);
-      if (provider === 'anthropic') return streamAnthropic(args);
-      if (provider === 'gemini') return streamGemini(args);
-      throw new Error('unknown provider: ' + provider);
+    ready: chain.length > 0,
+    model: chain[0]?.model || 'none',
+    chain: chain.map(e => e.model),
+
+    async stream({ system, turns, imageDataUrl, maxTokens: mt, onToken, onModel }) {
+      if (!chain.length) throw new Error('Add your OpenCode Zen API key in Settings to start (free models available at opencode.ai/zen).');
+      let lastErr = null;
+      for (const entry of chain) {
+        try {
+          if (onModel) onModel(entry.model);
+          const args = { apiKey, model: entry.model, maxTokens: mt || maxTokens, system, turns, imageDataUrl, onToken };
+          return await streamZenOpenAI(args);
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+      throw lastErr || new Error('All models failed. Check your Zen key or balance at opencode.ai/zen.');
     }
   };
 }

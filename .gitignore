@@ -1,7 +1,59 @@
+# Dependencies
 node_modules/
+
+# Build output
 dist/
 out/
+
+# Native binaries
 native/systemaudio
+
+# Logs
 *.log
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Secrets / user data — NEVER commit these
+cue-data.json           # contains API keys + personal interview prep
+cue-meetings.json
+*.env
+.env*
+.env.local
+.env.*.local
+
+# Editor / IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# OS junk
 .DS_Store
-cue-data.json
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+
+# Temp / backups
+*.bak
+*.tmp
+
+# Test artefacts
+test-stt-connection.js
+test-resume.js
+coverage/
+
+# Kiro IDE internals — hide spec/steering from the public repo
+.kiro/
+
+# Electron dist cache
+node_modules/electron/dist/electron.exe.bak
+
+# Local dev scratch
+scratch/
+.tmp/
+
+# Internal planning docs — keep out of the public repo
+docs/dev.md
+docs/gpt-suggestions.md
