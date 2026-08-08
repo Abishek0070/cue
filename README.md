@@ -6,7 +6,15 @@
 
 A free, self-hosted alternative to Cluely. Bring your own AI key (OpenAI · Anthropic · Google Gemini).
 
-<img src="docs/tutorial.png" width="620" alt="cue first-run tutorial" />
+<br/>
+
+![License: GPL-3.0-or-later](https://img.shields.io/badge/License-GPL--3.0--or--later-6b76ff) &nbsp;
+![Platform: macOS](https://img.shields.io/badge/Platform-macOS-6b76ff) &nbsp;
+![No server](https://img.shields.io/badge/No%20server-Local%20only-6b76ff)
+
+<br/>
+
+<img src="docs/tutorial.png" width="620" alt="cue first-run tutorial" style="border-radius: 12px; border: 1px solid #d5d9e6;" />
 
 </div>
 
@@ -102,7 +110,7 @@ cue is hidden from most screen-share tools automatically — **Google Meet, Micr
 
 > **Zoom → Settings → Share Screen → Advanced → Screen capture mode → choose "Advanced capture with window filtering."**
 
-<div align="center"><img src="docs/zoom-setting.png" width="560" alt="Zoom screen capture mode setting" /></div>
+<div align="center"><img src="docs/zoom-setting.png" width="560" alt="Zoom screen capture mode setting" style="border-radius: 12px; border: 1px solid #d5d9e6;" /></div>
 
 **Why:** the *"...with window filtering"* modes tell Zoom to leave out windows that mark themselves as private — which is exactly what cue does. The **"Advanced capture without window filtering"** mode grabs the raw screen and **will show cue**, so avoid it.
 
