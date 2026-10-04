@@ -9,19 +9,27 @@ const Module = require('node:module');
 
 const originalModuleLoad = Module._load;
 
-function loadStore(fileContents) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cue-store-'));
+// Re-requires src/store.js (and settings-store-core.js) fresh, pointed at
+// `dir`, without touching whatever is already on disk there — simulates the
+// next app launch reading the same userData directory.
+function openStoreAt(dir) {
   const file = path.join(dir, 'cue-data.json');
-  if (fileContents !== undefined) fs.writeFileSync(file, typeof fileContents === 'string' ? fileContents : JSON.stringify(fileContents, null, 2));
   Module._load = function loadWithElectronStub(request, parent, isMain) {
     if (request === 'electron') return { app: { getPath: () => dir } };
     return originalModuleLoad.call(this, request, parent, isMain);
   };
-  const id = require.resolve('../src/store');
-  delete require.cache[id];
+  delete require.cache[require.resolve('../src/store')];
+  delete require.cache[require.resolve('../src/settings-store-core')];
   const store = require('../src/store');
   Module._load = originalModuleLoad;
   return { store, file, dir, read: () => JSON.parse(fs.readFileSync(file, 'utf8')) };
+}
+
+function loadStore(fileContents) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cue-store-'));
+  const file = path.join(dir, 'cue-data.json');
+  if (fileContents !== undefined) fs.writeFileSync(file, typeof fileContents === 'string' ? fileContents : JSON.stringify(fileContents, null, 2));
+  return openStoreAt(dir);
 }
 
 const AVAILABLE = { available: true, appToken: 'pat_cue_x', disclosureVersion: 1 };
@@ -122,4 +130,61 @@ test('defaults carry the publik model aliases and the settings file is written 0
   assert.deepEqual(store.getSettings().models.publik, { fast: 'publik-fast', smart: 'publik-balanced' });
   store.setSettings({});
   if (process.platform !== 'win32') assert.equal(fs.statSync(file).mode & 0o777, 0o600);
+});
+
+test('opacity is persisted and clamped so the window cannot disappear', () => {
+  const { store } = loadStore();
+  assert.equal(store.getSettings().opacity, 1);
+  assert.equal(store.clampOpacity(0.55), 0.55);
+  assert.equal(store.clampOpacity(0), 0.2);
+  assert.equal(store.clampOpacity(2), 1);
+  assert.equal(store.clampOpacity('nope'), 1);
+  store.setSettings({ opacity: 0.01 });
+  assert.equal(store.getSettings().opacity, 0.2);
+  store.setSettings({ opacity: 0.73 });
+  assert.equal(store.getSettings().opacity, 0.73);
+});
+
+test('slide-caption app-link consent is tracked per caller, separately from the read/action scope grants', () => {
+  const { store, read } = loadStore();
+  assert.equal(store.getSlidesConsent('com.publikhq.iris'), undefined);
+
+  store.setSlidesConsent('com.publikhq.iris', 'granted');
+  assert.equal(store.getSlidesConsent('com.publikhq.iris'), 'granted');
+  assert.equal(store.getSlidesConsent('some-other-caller'), undefined, 'consent is per caller, not global');
+  assert.deepEqual(read().applinkSlidesConsent, { 'com.publikhq.iris': 'granted' });
+
+  store.setSlidesConsent('some-other-caller', 'denied');
+  assert.equal(store.getSlidesConsent('some-other-caller'), 'denied');
+  assert.equal(store.getSlidesConsent('com.publikhq.iris'), 'granted', 'unaffected by a different caller');
+
+  store.clearSlidesConsent('com.publikhq.iris');
+  assert.equal(store.getSlidesConsent('com.publikhq.iris'), undefined);
+  assert.equal(store.getSlidesConsent('some-other-caller'), 'denied', 'clearing one caller leaves others alone');
+});
+
+test('writes are atomic and a crash-corrupted file recovers from the previous generation instead of going blank', () => {
+  const { store, file, dir } = loadStore();
+  store.setSettings({ apiKeys: { openai: 'sk-previous' } });
+  store.setSettings({ apiKeys: { openai: 'sk-previous', anthropic: 'sk-latest' } });
+  assert.equal(store.getSettings().apiKeys.anthropic, 'sk-latest');
+
+  // Simulate the crash mid-write that used to permanently blank every key.
+  fs.writeFileSync(file, '{"apiKeys":{"ope');
+
+  const { store: reloaded } = openStoreAt(dir);
+  const recovered = reloaded.getSettings();
+  assert.equal(recovered.apiKeys.openai, 'sk-previous', 'recovered from the .bak generation, not defaulted to blank');
+  assert.equal(recovered.apiKeys.anthropic, '', 'the .bak generation predates the anthropic key — correctly the older value, not a crash artifact');
+});
+
+test('a failed save is reported via lastSaveError instead of being silently swallowed', () => {
+  const { store, dir } = loadStore();
+  assert.equal(store.lastSaveError(), null);
+  fs.rmSync(dir, { recursive: true, force: true }); // the directory disappears out from under a live store
+
+  const result = store.setSettings({ smart: true });
+  assert.equal(result.smart, true, 'the in-memory settings still update even though the write failed');
+  assert.ok(store.lastSaveError());
+  assert.match(String(store.lastSaveError().message), /ENOENT/);
 });
